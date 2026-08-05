@@ -1,7 +1,27 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
 </script>
 
 <template>
-  <HelloWorld />
+  <div id="app">
+    <a-layout style="min-height: 100vh">
+      <div-layout-header style="background: #001529; padding: 0 50px">
+        <div style="color: white; font-size: 24px; font-weight: bold">
+          🌍 智能旅行助手
+        </div>
+      </div-layout-header>
+      <a-layout-content style="padding: 24px">
+        <router-view />
+      </a-layout-content>
+      <a-layout-footer style="text-align: center">
+        智能旅行助手 ©2026 Created by ForikCoding
+      </a-layout-footer>
+    </a-layout>
+  </div>
 </template>
+
+<style>
+#app {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+}
+</style>
