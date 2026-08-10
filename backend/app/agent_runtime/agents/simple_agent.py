@@ -1,6 +1,4 @@
-"""
-简单Agent实现 - 基于OpenAI原生API
-"""
+"""简单Agent实现 - 基于OpenAI原生API"""
 
 from typing import Optional, Iterator, TYPE_CHECKING, Callable
 import re

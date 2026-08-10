@@ -2,10 +2,10 @@
 
 import re
 from typing import Optional, List, Tuple, Callable, Dict, Any
-from backend.app.AgentRuntime.core.agent import Agent
-from backend.app.AgentRuntime.core.llm import HelloAgentsLLM
-from backend.app.AgentRuntime.core.config import Config
-from backend.app.AgentRuntime.core.message import Message
+from core.agent import Agent
+from core.llm import HelloAgentsLLM
+from core.config import Config
+from core.message import Message
 from tools.registry import ToolRegistry
 from utils.cli_ui import Spinner, c, PRIMARY, ACCENT, INFO, hr, log_tool_event, clamp_text
 
@@ -426,13 +426,3 @@ class ReActAgent(Agent):
             return action_text[len("finish"):].strip()
 
         return ""
-
-
-if __name__ == "__main__":
-    llm = AgentsLLM()
-    tool_executor = ToolExecutor()
-    search_desc = "一个网页搜索引擎。当你需要回答关于时事、事实以及在你的知识库中找不到的信息时，应使用此工具。"
-    tool_executor.register_tool("Search", search_desc, search)
-    agent = ReActAgent(llm_client=llm, tool_executor=tool_executor)
-    question = "华为最新的手机是哪一款？它的主要卖点是什么？"
-    agent.run(question)

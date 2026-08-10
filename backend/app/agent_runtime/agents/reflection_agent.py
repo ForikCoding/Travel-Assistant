@@ -1,70 +1,140 @@
-from backend.app.AgentRuntime.agents.Memory import Memory
-from backend.app.AgentRuntime.core.llm import AgentsLLM
+"""Reflection Agent实现 - 自我反思与迭代优化的智能体"""
 
-# --- 模块 2: Reflection 智能体 ---
+from typing import Optional, List, Dict, Any
+from core.agent import Agent
+from core.llm import HelloAgentsLLM
+from core.config import Config
+from core.message import Message
 
-# 1. 初始执行提示词
-INITIAL_PROMPT_TEMPLATE = """
-你是一位资深的Python程序员。请根据以下要求，编写一个Python函数。
-你的代码必须包含完整的函数签名、文档字符串，并遵循PEP 8编码规范。
+# 默认提示词模板
+DEFAULT_PROMPTS = {
+    "initial": """
+请根据以下要求完成任务：
 
-要求: {task}
+任务: {task}
 
-请直接输出代码，不要包含任何额外的解释。
-"""
-
-# 2. 反思提示词
-REFLECT_PROMPT_TEMPLATE = """
-你是一位极其严格的代码评审专家和资深算法工程师，对代码的性能有极致的要求。
-你的任务是审查以下Python代码，并专注于找出其在**算法效率**上的主要瓶颈。
-
-# 原始任务:
-{task}
-
-# 待审查的代码:
-```python
-{code}
-```
-
-请分析该代码的时间复杂度，并思考是否存在一种**算法上更优**的解决方案来显著提升性能。
-如果存在，请清晰地指出当前算法的不足，并提出具体的、可行的改进算法建议（例如，使用筛法替代试除法）。
-如果代码在算法层面已经达到最优，才能回答“无需改进”。
-
-请直接输出你的反馈，不要包含任何额外的解释。
-"""
-
-# 3. 优化提示词
-REFINE_PROMPT_TEMPLATE = """
-你是一位资深的Python程序员。你正在根据一位代码评审专家的反馈来优化你的代码。
+请提供一个完整、准确的回答。
+""",
+    "reflect": """
+请仔细审查以下回答，并找出可能的问题或改进空间：
 
 # 原始任务:
 {task}
 
-# 你上一轮尝试的代码:
-{last_code_attempt}
+# 当前回答:
+{content}
 
-# 评审员的反馈:
+请分析这个回答的质量，指出不足之处，并提出具体的改进建议。
+如果回答已经很好，请回答"无需改进"。
+""",
+    "refine": """
+请根据反馈意见改进你的回答：
+
+# 原始任务:
+{task}
+
+# 上一轮回答:
+{last_attempt}
+
+# 反馈意见:
 {feedback}
 
-请根据评审员的反馈，生成一个优化后的新版本代码。
-你的代码必须包含完整的函数签名、文档字符串，并遵循PEP 8编码规范。
-请直接输出优化后的代码，不要包含任何额外的解释。
+请提供一个改进后的回答。
 """
+}
 
-class ReflectionAgent:
-    def __init__(self, llm_client, max_iterations=3):
-        self.llm_client = llm_client
-        self.memory = Memory()
+class Memory:
+    """
+    简单的短期记忆模块，用于存储智能体的行动与反思轨迹。
+    """
+    def __init__(self):
+        self.records: List[Dict[str, Any]] = []
+
+    def add_record(self, record_type: str, content: str):
+        """向记忆中添加一条新记录"""
+        self.records.append({"type": record_type, "content": content})
+        print(f"📝 记忆已更新，新增一条 '{record_type}' 记录。")
+
+    def get_trajectory(self) -> str:
+        """将所有记忆记录格式化为一个连贯的字符串文本"""
+        trajectory = ""
+        for record in self.records:
+            if record['type'] == 'execution':
+                trajectory += f"--- 上一轮尝试 (代码) ---\n{record['content']}\n\n"
+            elif record['type'] == 'reflection':
+                trajectory += f"--- 评审员反馈 ---\n{record['content']}\n\n"
+        return trajectory.strip()
+
+    def get_last_execution(self) -> str:
+        """获取最近一次的执行结果"""
+        for record in reversed(self.records):
+            if record['type'] == 'execution':
+                return record['content']
+        return ""
+
+class ReflectionAgent(Agent):
+    """
+    Reflection Agent - 自我反思与迭代优化的智能体
+
+    这个Agent能够：
+    1. 执行初始任务
+    2. 对结果进行自我反思
+    3. 根据反思结果进行优化
+    4. 迭代改进直到满意
+
+    特别适合代码生成、文档写作、分析报告等需要迭代优化的任务。
+
+    支持多种专业领域的提示词模板，用户可以自定义或使用内置模板。
+    """
+
+    def __init__(
+        self,
+        name: str,
+        llm: HelloAgentsLLM,
+        system_prompt: Optional[str] = None,
+        config: Optional[Config] = None,
+        max_iterations: int = 3,
+        custom_prompts: Optional[Dict[str, str]] = None
+    ):
+        """
+        初始化ReflectionAgent
+
+        Args:
+            name: Agent名称
+            llm: LLM实例
+            system_prompt: 系统提示词
+            config: 配置对象
+            max_iterations: 最大迭代次数
+            custom_prompts: 自定义提示词模板 {"initial": "", "reflect": "", "refine": ""}
+        """
+        super().__init__(name, llm, system_prompt, config)
         self.max_iterations = max_iterations
+        self.memory = Memory()
 
-    def run(self, task: str):
-        print(f"\n--- 开始处理任务: {task} ---")
+        # 设置提示词模板：用户自定义优先，否则使用默认模板
+        self.prompts = custom_prompts if custom_prompts else DEFAULT_PROMPTS
+    
+    def run(self, input_text: str, **kwargs) -> str:
+        """
+        运行Reflection Agent
+
+        Args:
+            input_text: 任务描述
+            **kwargs: 其他参数
+
+        Returns:
+            最终优化后的结果
+        """
+        print(f"\n🤖 {self.name} 开始处理任务: {input_text}")
+
+        # 重置记忆
+        self.memory = Memory()
 
         # 1. 初始执行
         print("\n--- 正在进行初始尝试 ---")
-        initial_prompt = INITIAL_PROMPT_TEMPLATE.format(task=task)
-        initial_code = self._get_llm_response(initial_prompt)
-        self.memory.add_record("execution", initial_code)
+        initial_prompt = self.prompts["initial"].format(task=input_text)
+        initial_result = self._get_llm_response(initial_prompt, **kwargs)
+        self.memory.add_record("execution", initial_result)
 
         # 2. 迭代循环：反思与优化
         for i in range(self.max_iterations):
@@ -72,43 +142,39 @@ class ReflectionAgent:
 
             # a. 反思
             print("\n-> 正在进行反思...")
-            last_code = self.memory.get_last_execution()
-            reflect_prompt = REFLECT_PROMPT_TEMPLATE.format(task=task, code=last_code)
-            feedback = self._get_llm_response(reflect_prompt)
+            last_result = self.memory.get_last_execution()
+            reflect_prompt = self.prompts["reflect"].format(
+                task=input_text,
+                content=last_result
+            )
+            feedback = self._get_llm_response(reflect_prompt, **kwargs)
             self.memory.add_record("reflection", feedback)
 
-                        # c. 优化
+            # b. 检查是否需要停止
+            if "无需改进" in feedback or "no need for improvement" in feedback.lower():
+                print("\n✅ 反思认为结果已无需改进，任务完成。")
+                break
+
+            # c. 优化
             print("\n-> 正在进行优化...")
-            refine_prompt = REFINE_PROMPT_TEMPLATE.format(
-                task=task,
-                last_code_attempt=last_code,
+            refine_prompt = self.prompts["refine"].format(
+                task=input_text,
+                last_attempt=last_result,
                 feedback=feedback
             )
-            refined_code = self._get_llm_response(refine_prompt)
-            self.memory.add_record("execution", refined_code)
+            refined_result = self._get_llm_response(refine_prompt, **kwargs)
+            self.memory.add_record("execution", refined_result)
 
-        final_code = self.memory.get_last_execution()
-        print(f"\n--- 任务完成 ---\n最终生成的代码:\n{final_code}")
-        return final_code
+        final_result = self.memory.get_last_execution()
+        print(f"\n--- 任务完成 ---\n最终结果:\n{final_result}")
 
-    def _get_llm_response(self, prompt: str) -> str:
-        """一个辅助方法，用于调用LLM并获取完整的流式响应。"""
+        # 保存到历史记录
+        self.add_message(Message(input_text, "user"))
+        self.add_message(Message(final_result, "assistant"))
+
+        return final_result
+    
+    def _get_llm_response(self, prompt: str, **kwargs) -> str:
+        """调用LLM并获取完整响应"""
         messages = [{"role": "user", "content": prompt}]
-        # 确保能处理生成器可能返回None的情况
-        response_text = self.llm_client.think(messages=messages) or ""
-        return response_text
-
-if __name__ == '__main__':
-    # 1. 初始化LLM客户端 (请确保你的 .env 和 llm_client.py 文件配置正确)
-    try:
-        llm_client = AgentsLLM()
-    except Exception as e:
-        print(f"初始化LLM客户端时出错: {e}")
-        exit()
-
-    # 2. 初始化 Reflection 智能体，设置最多迭代2轮
-    agent = ReflectionAgent(llm_client, max_iterations=2)
-
-    # 3. 定义任务并运行智能体
-    task = "编写一个Python函数，找出1到n之间所有的素数 (prime numbers)。"
-    agent.run(task)
+        return self.llm.invoke(messages, **kwargs) or ""
