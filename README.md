@@ -11,6 +11,7 @@
 | 状态管理 | Pinia 4                       |
 | 后端   | Python 3.10+, FastAPI, Uvicorn |
 | 数据验证 | Pydantic 2                    |
+| 搜索服务 | Google Search Results (SerpApi) |
 
 ## 项目结构
 
@@ -29,8 +30,17 @@ Travel-Assistant/
 │
 ├── backend/                   # 后端项目 (Python FastAPI)
 │   ├── app/
-│   │   ├── __init__.py
+│   │   ├── agents/            # Agent 模块
+│   │   ├── models/            # 数据模型
+│   │   ├── services/          # 服务层
+│   │   ├── tools/             # 可复用工具包
+│   │   │   ├── tool_base.py   # Tool / ToolParameter 抽象基类
+│   │   │   ├── mcp_tool.py    # MCPTool / MCPWrappedTool
+│   │   │   └── llm.py         # AgentsLLM (DeepSeek API)
+│   │   ├── config.py          # 配置管理
 │   │   └── main.py            # API 入口
+│   ├── venv/                  # Python 虚拟环境（需自行创建）
+│   ├── .env                   # 环境变量配置
 │   └── requirements.txt
 │
 └── .gitignore
@@ -52,7 +62,29 @@ npm run preview    # 预览生产构建
 
 ```bash
 cd backend
+
+# 1. 创建虚拟环境
+python -m venv venv
+
+# 2. 激活虚拟环境（根据终端选择）
+# Git Bash / Linux / macOS:
+source venv/Scripts/activate
+# 或
+source venv/bin/activate
+
+# Windows PowerShell:
+.\venv\Scripts\Activate.ps1
+# 如遇执行策略限制，先运行:
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Windows CMD:
+venv\Scripts\activate.bat
+
+# 3. 安装依赖
 pip install -r requirements.txt
+
+# 4. 配置环境变量（编辑 .env 填写 API Key）
+# 5. 启动服务
 uvicorn app.main:app --reload --port 8000
 ```
 
