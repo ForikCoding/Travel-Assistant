@@ -17,7 +17,7 @@ import numpy as np
 
 from ..base import BaseMemory, MemoryItem, MemoryConfig
 from ..embedding import get_text_embedder, get_dimension
-from core.database_config import get_database_config
+from ...core.database_config import get_database_config
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)

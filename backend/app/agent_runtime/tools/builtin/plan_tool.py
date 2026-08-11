@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from core.llm import HelloAgentsLLM
-from tools.base import Tool, ToolParameter
+from ...core.llm import AgentsLLM
+from ...tools.base import Tool, ToolParameter
 
 
 class PlanTool(Tool):
@@ -14,7 +14,7 @@ class PlanTool(Tool):
     建议在 ReAct 中按需调用：plan[{"goal":"..."}] 或 plan[目标文本]
     """
 
-    def __init__(self, llm: HelloAgentsLLM, prompt_path: Optional[str] = None):
+    def __init__(self, llm: AgentsLLM, prompt_path: Optional[str] = None):
         super().__init__(name="plan", description="生成可执行计划（仅在需要时调用）")
         self.llm = llm
         self.prompt_path = Path(prompt_path).resolve() if prompt_path else None

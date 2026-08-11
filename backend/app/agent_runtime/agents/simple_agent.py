@@ -3,13 +3,13 @@
 from typing import Optional, Iterator, TYPE_CHECKING, Callable
 import re
 
-from core.agent import Agent
-from core.llm import HelloAgentsLLM
-from core.config import Config
-from core.message import Message
+from ..core.agent import Agent
+from ..core.llm import AgentsLLM
+from ..core.config import Config
+from ..core.message import Message
 
 if TYPE_CHECKING:
-    from tools.registry import ToolRegistry
+    from ..tools.registry import ToolRegistry
 
 class SimpleAgent(Agent):
     """简单的对话Agent，支持可选的工具调用"""
@@ -17,7 +17,7 @@ class SimpleAgent(Agent):
     def __init__(
         self,
         name: str,
-        llm: HelloAgentsLLM,
+        llm: AgentsLLM,
         system_prompt: Optional[str] = None,
         config: Optional[Config] = None,
         tool_registry: Optional['ToolRegistry'] = None,
@@ -340,7 +340,7 @@ class SimpleAgent(Agent):
         如果是MCP工具且启用了auto_expand，会自动展开为多个独立工具
         """
         if not self.tool_registry:
-            from tools.registry import ToolRegistry
+            from ..tools.registry import ToolRegistry
             self.tool_registry = ToolRegistry()
             self.enable_tool_calling = True
 
@@ -352,7 +352,7 @@ class SimpleAgent(Agent):
                 # 注册所有展开的工具
                 for expanded_tool in expanded_tools:
                     self.tool_registry.register_tool(expanded_tool)
-                print(f"✅ MCP工具 '{tool.name}' 已展开为 {len(expanded_tools)} 个独立工具")
+                print(f"[OK] MCP tool '{tool.name}' expanded to {len(expanded_tools)} independent tools")
                 return
 
         # 普通工具或不展开的MCP工具

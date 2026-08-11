@@ -26,9 +26,9 @@ def get_llm() -> AgentsLLM:
         settings = get_settings()
 
         _llm_instance = AgentsLLM(
-            model=settings.llm_model or None,
-            api_key=settings.llm_api_key or None,
-            base_url=settings.llm_base_url or None,
+            model=settings.llm_model.strip() or None,
+            api_key=settings.llm_api_key.strip() or None,
+            base_url=settings.llm_base_url.strip() or None,
         )
 
     return _llm_instance

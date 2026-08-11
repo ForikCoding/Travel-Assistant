@@ -319,7 +319,7 @@ class MCPTool(Tool):
                     value = os.getenv(key)
                     if value:
                         result_env[key] = value
-                        print(f"🔑 自动加载环境变量: {key}")
+                        print(f"[ENV] auto-loaded env var: {key}")
 
         # 2. env_keys 指定的环境变量（优先级中等）
         if env_keys:
@@ -327,15 +327,15 @@ class MCPTool(Tool):
                 value = os.getenv(key)
                 if value:
                     result_env[key] = value
-                    print(f"🔑 从 env_keys 加载环境变量: {key}")
+                    print(f"[ENV] loaded from env_keys: {key}")
                 else:
-                    print(f"⚠️  警告: 环境变量 {key} 未设置")
+                    print(f"[WARN] env var not set: {key}")
 
         # 3. 直接传递的 env（优先级最高）
         if env:
             result_env.update(env)
             for key in env:
-                print(f"🔑 使用直接传递的环境变量: {key}")
+                print(f"[ENV] using direct env var: {key}")
 
         return result_env
 
@@ -384,7 +384,7 @@ class MCPTool(Tool):
             self._available_tools = self._run_async(_discover())
         except Exception as e:
             # 工具发现失败不影响初始化，可在 run() 时再试
-            print(f"⚠️  MCP 工具发现失败: {e}")
+            print(f"[WARN] MCP tool discovery failed: {e}")
             self._available_tools = []
 
     # ── 描述生成 ──────────────────────────────────────────

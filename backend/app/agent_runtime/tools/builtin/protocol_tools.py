@@ -168,7 +168,7 @@ class MCPTool(Tool):
                     value = os.getenv(key)
                     if value:
                         result_env[key] = value
-                        print(f"🔑 自动加载环境变量: {key}")
+                        print(f"[ENV] auto-loaded env var: {key}")
 
         # 2. env_keys指定的环境变量（优先级中等）
         if env_keys:
@@ -176,15 +176,15 @@ class MCPTool(Tool):
                 value = os.getenv(key)
                 if value:
                     result_env[key] = value
-                    print(f"🔑 从env_keys加载环境变量: {key}")
+                    print(f"[ENV] loaded from env_keys: {key}")
                 else:
-                    print(f"⚠️  警告: 环境变量 {key} 未设置")
+                    print(f"[WARN] env var not set: {key}")
 
         # 3. 直接传递的env（优先级最高）
         if env:
             result_env.update(env)
             for key in env.keys():
-                print(f"🔑 使用直接传递的环境变量: {key}")
+                print(f"[ENV] using direct env var: {key}")
 
         return result_env
 
@@ -243,15 +243,29 @@ class MCPTool(Tool):
 
     def _discover_tools(self):
         """发现MCP服务器提供的所有工具"""
+        if not self.server_command:
+            return
+
         try:
-            from hello_agents.protocols.mcp.client import MCPClient
+            from mcp import ClientSession, StdioServerParameters
+            from mcp.client.stdio import stdio_client
             import asyncio
 
             async def discover():
-                client_source = self.server if self.server else self.server_command
-                async with MCPClient(client_source, self.server_args, env=self.env) as client:
-                    tools = await client.list_tools()
-                    return tools
+                merged_env = {**os.environ, **self.env} if self.env else None
+                params = StdioServerParameters(
+                    command=self.server_command[0],
+                    args=self.server_command[1:] + self.server_args,
+                    env=merged_env,
+                )
+                async with stdio_client(params) as (read, write):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        result = await session.list_tools()
+                        return [
+                            {"name": t.name, "description": t.description}
+                            for t in result.tools
+                        ]
 
             # 运行异步发现
             try:
@@ -275,6 +289,7 @@ class MCPTool(Tool):
 
         except Exception as e:
             # 工具发现失败不影响初始化
+            print(f"[WARN] MCP tool discovery failed: {e}")
             self._available_tools = []
 
     def _generate_description(self) -> str:
@@ -353,7 +368,8 @@ class MCPTool(Tool):
         Returns:
             操作结果
         """
-        from hello_agents.protocols.mcp.client import MCPClient
+        from mcp import ClientSession, StdioServerParameters
+        from mcp.client.stdio import stdio_client
 
         # 智能推断action：如果没有action但有tool_name，自动设置为call_tool
         action = parameters.get("action", "").lower()
@@ -363,89 +379,88 @@ class MCPTool(Tool):
 
         if not action:
             return "错误：必须指定 action 参数或 tool_name 参数"
-        
+
         try:
-            # 使用增强的异步客户端
             import asyncio
-            from hello_agents.protocols.mcp.client import MCPClient
 
             async def run_mcp_operation():
-                # 根据配置选择客户端创建方式
-                if self.server:
-                    # 使用内置服务器（内存传输）
-                    client_source = self.server
-                else:
-                    # 使用外部服务器命令
-                    client_source = self.server_command
+                merged_env = {**os.environ, **self.env} if self.env else None
+                params = StdioServerParameters(
+                    command=self.server_command[0],
+                    args=self.server_command[1:] + self.server_args,
+                    env=merged_env,
+                )
+                async with stdio_client(params) as (read, write):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
 
-                async with MCPClient(client_source, self.server_args, env=self.env) as client:
-                    if action == "list_tools":
-                        tools = await client.list_tools()
-                        if not tools:
-                            return "没有找到可用的工具"
-                        result = f"找到 {len(tools)} 个工具:\n"
-                        for tool in tools:
-                            result += f"- {tool['name']}: {tool['description']}\n"
-                        return result
+                        if action == "list_tools":
+                            result = await session.list_tools()
+                            tools = result.tools
+                            if not tools:
+                                return "没有找到可用的工具"
+                            output = f"找到 {len(tools)} 个工具:\n"
+                            for tool in tools:
+                                output += f"- {tool.name}: {tool.description}\n"
+                            return output
 
-                    elif action == "call_tool":
-                        tool_name = parameters.get("tool_name")
-                        arguments = parameters.get("arguments", {})
-                        if not tool_name:
-                            return "错误：必须指定 tool_name 参数"
-                        result = await client.call_tool(tool_name, arguments)
-                        return f"工具 '{tool_name}' 执行结果:\n{result}"
+                        elif action == "call_tool":
+                            tool_name = parameters.get("tool_name")
+                            arguments = parameters.get("arguments", {})
+                            if not tool_name:
+                                return "错误：必须指定 tool_name 参数"
+                            result = await session.call_tool(tool_name, arguments)
+                            return f"工具 '{tool_name}' 执行结果:\n{result}"
 
-                    elif action == "list_resources":
-                        resources = await client.list_resources()
-                        if not resources:
-                            return "没有找到可用的资源"
-                        result = f"找到 {len(resources)} 个资源:\n"
-                        for resource in resources:
-                            result += f"- {resource['uri']}: {resource['name']}\n"
-                        return result
+                        elif action == "list_resources":
+                            result = await session.list_resources()
+                            resources = result.resources
+                            if not resources:
+                                return "没有找到可用的资源"
+                            output = f"找到 {len(resources)} 个资源:\n"
+                            for resource in resources:
+                                output += f"- {resource.uri}: {resource.name}\n"
+                            return output
 
-                    elif action == "read_resource":
-                        uri = parameters.get("uri")
-                        if not uri:
-                            return "错误：必须指定 uri 参数"
-                        content = await client.read_resource(uri)
-                        return f"资源 '{uri}' 内容:\n{content}"
+                        elif action == "read_resource":
+                            uri = parameters.get("uri")
+                            if not uri:
+                                return "错误：必须指定 uri 参数"
+                            result = await session.read_resource(uri)
+                            return f"资源 '{uri}' 内容:\n{result}"
 
-                    elif action == "list_prompts":
-                        prompts = await client.list_prompts()
-                        if not prompts:
-                            return "没有找到可用的提示词"
-                        result = f"找到 {len(prompts)} 个提示词:\n"
-                        for prompt in prompts:
-                            result += f"- {prompt['name']}: {prompt['description']}\n"
-                        return result
+                        elif action == "list_prompts":
+                            result = await session.list_prompts()
+                            prompts = result.prompts
+                            if not prompts:
+                                return "没有找到可用的提示词"
+                            output = f"找到 {len(prompts)} 个提示词:\n"
+                            for prompt in prompts:
+                                output += f"- {prompt.name}: {prompt.description}\n"
+                            return output
 
-                    elif action == "get_prompt":
-                        prompt_name = parameters.get("prompt_name")
-                        prompt_arguments = parameters.get("prompt_arguments", {})
-                        if not prompt_name:
-                            return "错误：必须指定 prompt_name 参数"
-                        messages = await client.get_prompt(prompt_name, prompt_arguments)
-                        result = f"提示词 '{prompt_name}':\n"
-                        for msg in messages:
-                            result += f"[{msg['role']}] {msg['content']}\n"
-                        return result
+                        elif action == "get_prompt":
+                            prompt_name = parameters.get("prompt_name")
+                            prompt_arguments = parameters.get("prompt_arguments", {})
+                            if not prompt_name:
+                                return "错误：必须指定 prompt_name 参数"
+                            result = await session.get_prompt(prompt_name, prompt_arguments)
+                            output = f"提示词 '{prompt_name}':\n"
+                            for msg in result.messages:
+                                output += f"[{msg.role}] {msg.content}\n"
+                            return output
 
-                    else:
-                        return f"错误：不支持的操作 '{action}'"
+                        else:
+                            return f"错误：不支持的操作 '{action}'"
 
             # 运行异步操作
             try:
-                # 检查是否已有运行中的事件循环
                 try:
                     loop = asyncio.get_running_loop()
                     # 如果有运行中的循环，在新线程中运行新的事件循环
                     import concurrent.futures
-                    import threading
 
                     def run_in_thread():
-                        # 在新线程中创建新的事件循环
                         new_loop = asyncio.new_event_loop()
                         asyncio.set_event_loop(new_loop)
                         try:
@@ -461,7 +476,7 @@ class MCPTool(Tool):
                     return asyncio.run(run_mcp_operation())
             except Exception as e:
                 return f"异步操作失败: {str(e)}"
-                    
+
         except Exception as e:
             return f"MCP 操作失败: {str(e)}"
     

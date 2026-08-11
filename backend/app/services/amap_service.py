@@ -1,8 +1,8 @@
 """高德地图MCP服务封装"""
 
-from typing import Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 from ..config import get_settings
-from ..models.schemas import POISearchRequest, RouteRequest
+from ..models.schemas import Location, POIInfo, WeatherInfo
 from ..tools.mcp_tool import MCPTool
 
 # 全局MCP工具实例

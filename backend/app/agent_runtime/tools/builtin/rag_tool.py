@@ -25,7 +25,7 @@ import time
 
 from ..base import Tool, ToolParameter
 from ...memory.rag.pipeline import create_rag_pipeline
-from ...core.llm import HelloAgentsLLM
+from ...core.llm import AgentsLLM
 
 class RAGTool(Tool):
     """RAG工具
@@ -76,7 +76,7 @@ class RAGTool(Tool):
             self._pipelines[self.rag_namespace] = default_pipeline
 
             # 初始化 LLM 用于回答生成
-            self.llm = HelloAgentsLLM()
+            self.llm = AgentsLLM()
 
             self.initialized = True
             print(f"✅ RAG工具初始化成功: namespace={self.rag_namespace}, collection={self.collection_name}")

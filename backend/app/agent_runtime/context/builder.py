@@ -13,8 +13,8 @@ from datetime import datetime
 import tiktoken
 import math
 
-from core.message import Message
-from core.llm import HelloAgentsLLM
+from ..core.message import Message
+from ..core.llm import AgentsLLM
 
 if TYPE_CHECKING:
     # Optional, only for type checking. Importing tools at runtime may pull in heavy optional deps.
@@ -92,7 +92,7 @@ class ContextBuilder:
         memory_tool: Optional[MemoryTool] = None,
         rag_tool: Optional[RAGTool] = None,
         config: Optional[ContextConfig] = None,
-        llm: Optional[HelloAgentsLLM] = None,
+        llm: Optional[AgentsLLM] = None,
     ):
         self.memory_tool = memory_tool
         self.rag_tool = rag_tool

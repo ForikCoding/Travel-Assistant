@@ -43,25 +43,25 @@ class AgentsLLM:
         >>> reply = llm.think(messages)
     """
 
-    def __init__(self, model: str = None, apiKey: str = None, baseUrl: str = None, timeout: int = None):
+    def __init__(self, model: str = None, api_key: str = None, base_url: str = None, timeout: int = None):
         """
         初始化客户端。优先使用传入参数，未提供时从环境变量加载。
 
         Args:
             model: 模型名称，默认 deepseek-chat
-            apiKey: API 密钥，默认从 LLM_API_KEY 或 DEEPSEEK_API_KEY 读取
-            baseUrl: 服务地址，默认 https://api.deepseek.com
+            api_key: API 密钥，默认从 LLM_API_KEY 或 DEEPSEEK_API_KEY 读取
+            base_url: 服务地址，默认 https://api.deepseek.com
             timeout: 超时秒数，默认 60
         """
         self.model = model or os.getenv("LLM_MODEL_ID") or DEFAULT_MODEL
-        apiKey = apiKey or os.getenv("LLM_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
-        baseUrl = baseUrl or os.getenv("LLM_BASE_URL") or DEFAULT_BASE_URL
+        api_key = api_key or os.getenv("LLM_API_KEY") or os.getenv("DEEPSEEK_API_KEY")
+        base_url = base_url or os.getenv("LLM_BASE_URL") or DEFAULT_BASE_URL
         timeout = timeout or int(os.getenv("LLM_TIMEOUT", "60"))
 
         # 清理 base_url 中的常见错误
-        baseUrl = _sanitize_base_url(baseUrl)
+        base_url = _sanitize_base_url(base_url)
 
-        if not all([self.model, apiKey, baseUrl]):
+        if not all([self.model, api_key, base_url]):
             raise ValueError(
                 "模型ID、API密钥和服务地址必须被提供或在.env文件中定义。\n"
                 "DeepSeek 默认配置:\n"
@@ -69,7 +69,12 @@ class AgentsLLM:
                 "  LLM_MODEL_ID=deepseek-chat"
             )
 
-        self.client = OpenAI(api_key=apiKey, base_url=baseUrl, timeout=timeout)
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=timeout,
+            max_retries=0,  # 禁用自动重试，避免超时雪崩
+        )
 
     def think(self, messages: List[Dict[str, str]], temperature: float = 0) -> str:
         """
@@ -105,3 +110,27 @@ class AgentsLLM:
         except Exception as e:
             print(f"[LLM] DeepSeek API Error: {e}")
             return None
+
+    def invoke(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        """
+        非流式调用 LLM，返回完整响应。
+
+        Args:
+            messages: 消息列表
+            **kwargs: 可覆盖 temperature 等参数
+
+        Returns:
+            str: 完整响应文本
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=kwargs.pop('temperature', 0),
+                max_tokens=kwargs.pop('max_tokens', None),
+                **kwargs,
+            )
+            return response.choices[0].message.content or ""
+        except Exception as e:
+            print(f"[LLM] DeepSeek API Error: {e}")
+            return ""

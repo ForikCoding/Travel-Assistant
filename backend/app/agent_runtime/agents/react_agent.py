@@ -2,11 +2,11 @@
 
 import re
 from typing import Optional, List, Tuple, Callable, Dict, Any
-from core.agent import Agent
-from core.llm import HelloAgentsLLM
-from core.config import Config
-from core.message import Message
-from tools.registry import ToolRegistry
+from ..core.agent import Agent
+from ..core.llm import AgentsLLM
+from ..core.config import Config
+from ..core.message import Message
+from ..tools.registry import ToolRegistry
 from utils.cli_ui import Spinner, c, PRIMARY, ACCENT, INFO, hr, log_tool_event, clamp_text
 
 # 默认ReAct提示词模板
@@ -53,7 +53,7 @@ class ReActAgent(Agent):
     def __init__(
         self,
         name: str,
-        llm: HelloAgentsLLM,
+        llm: AgentsLLM,
         tool_registry: Optional[ToolRegistry] = None,
         system_prompt: Optional[str] = None,
         config: Optional[Config] = None,

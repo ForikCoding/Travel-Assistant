@@ -21,7 +21,7 @@ load_dotenv()
 try:
     from .exceptions import AgentsException
 except ImportError:
-    from backend.app.AgentRuntime.core.exceptions import AgentsException
+    from app.agent_runtime.core.exceptions import AgentsException
 
 # 支持的LLM提供商
 SUPPORTED_PROVIDERS = Literal[
@@ -219,7 +219,8 @@ class AgentsLLM:
         return OpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
-            timeout=self.timeout
+            timeout=self.timeout,
+            max_retries=0,  # 禁用自动重试
         )
 
     def _get_default_model(self) -> str:
@@ -311,6 +312,7 @@ class AgentsLLM:
         """流式调用，与think()功能相同。"""
         temperature = kwargs.pop('temperature', None)
         yield from self.think(messages, temperature)
+
 
 
 # --- 测试 ---

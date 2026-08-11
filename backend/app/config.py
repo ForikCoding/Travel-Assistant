@@ -3,7 +3,6 @@
 import os
 from pathlib import Path
 from typing import List
-import warnings
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
@@ -35,8 +34,8 @@ class Settings(BaseSettings):
 
     # LLM配置
     llm_api_key: str = ""
-    llm_base_url: str = "https://api.openai.com/v1"
-    llm_model: str = "gpt-4"
+    llm_base_url: str = ""
+    llm_model: str = ""
 
     # 日志配置
     log_level: str = "INFO"
@@ -60,7 +59,7 @@ def get_settings() -> Settings:
 def validate_config():
     """验证配置是否完整"""
     errors = []
-    warning = []
+    warnings = []
 
     if not settings.amap_api_key:
         errors.append("高德地图API Key未配置，请在环境变量中设置AMAP_API_KEY。")
@@ -71,11 +70,11 @@ def validate_config():
 
     llm_base_url = os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL")
     if not llm_base_url:
-        warning.append("LLM Base URL未配置，默认使用OpenAI API。")
+        warnings.append("LLM Base URL未配置，默认使用OpenAI API。")
 
     llm_model = os.getenv("LLM_MODEL") or os.getenv("OPENAI_MODEL")
     if not llm_model:
-        warning.append("LLM模型未配置，默认使用gpt-4。")
+        warnings.append("LLM模型未配置，默认使用gpt-4。")
 
     if errors:
        error_msg = "配置错误:\n" + "\n".join(f"  - {e}" for e in errors)
@@ -98,8 +97,8 @@ def print_config():
 
     # 检查LLM配置
     llm_api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
-    llm_base_url = os.getenv("LLM_BASE_URL") or settings.openai_base_url
-    llm_model = os.getenv("LLM_MODEL_ID") or settings.openai_model
+    llm_base_url = os.getenv("LLM_BASE_URL") or settings.llm_base_url
+    llm_model = os.getenv("LLM_MODEL_ID") or settings.llm_model
 
     print(f"LLM API Key: {'已配置' if llm_api_key else '未配置'}")
     print(f"LLM Base URL: {llm_base_url}")
