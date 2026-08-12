@@ -17,3 +17,6 @@ gradio>=5.0.0
 
 # HelloAgents 框架
 hello-agents
+
+# 协议工具 (MCP 服务端,由 hello-agents[protocol] 引入)
+fastmcp>=2.0.0

@@ -132,8 +132,8 @@ class MCPTool(Tool):
             description=description
         )
 
-    def _prepare_env(self,
-                     env: Optional[Dict[str, str]],
+    @staticmethod
+    def _prepare_env(env: Optional[Dict[str, str]],
                      env_keys: Optional[List[str]],
                      server_command: Optional[List[str]]) -> Dict[str, str]:
         """
@@ -188,12 +188,13 @@ class MCPTool(Tool):
 
         return result_env
 
-    def _create_builtin_server(self):
+    @staticmethod
+    def _create_builtin_server():
         """创建内置演示服务器"""
         try:
             from fastmcp import FastMCP
 
-            server = FastMCP("HelloAgents-BuiltinServer")
+            server = FastMCP("Agents-BuiltinServer")
 
             @server.tool()
             def add(a: float, b: float) -> float:
