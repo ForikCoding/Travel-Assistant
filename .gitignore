@@ -225,3 +225,8 @@ __marimo__/
 .streamlit/secrets.toml
 .idea/
 .claude/
+agent_runtime/agent_runtime.egg-info
+agent_runtime/dist
+agent_runtime/memory_data
+agent_runtime/.env
+agent_runtime/tests/memory_data
