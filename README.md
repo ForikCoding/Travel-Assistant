@@ -236,3 +236,14 @@ MIT
 ---
 
 **Travel-Assistant** — 让旅行计划变得简单而智能 🌈
+
+-y
+@fangjunjie/ssh-mcp-server
+--host
+192.168.204.131
+port
+2201
+--username
+lion
+--password
+th8682087@

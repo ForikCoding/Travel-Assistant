@@ -80,7 +80,8 @@ class EpisodicMemory(BaseMemory):
         if not disable_emb:
             try:
                 self.embedder = get_text_embedder()
-            except Exception:
+            except Exception as e:
+                logger.warning("嵌入模型加载失败，降级为无嵌入: %s", e)
                 self.embedder = None
 
         if not disable_vec and self.embedder is not None:
@@ -96,7 +97,10 @@ class EpisodicMemory(BaseMemory):
                     vector_size=get_dimension(getattr(self.embedder, "dimension", 384)),
                     distance=os.getenv("QDRANT_DISTANCE", "cosine"),
                 )
-            except Exception:
+            except Exception as e:
+                logger.warning(
+                    "Qdrant 连接/初始化失败，向量检索降级为 SQLite 文本检索: %s", e
+                )
                 self.vector_store = None
     
     def add(self, memory_item: MemoryItem) -> str:
@@ -159,8 +163,9 @@ class EpisodicMemory(BaseMemory):
                 }],
                 ids=[memory_item.id]
             )
-        except Exception:
+        except Exception as e:
             # 向量入库失败不影响权威存储
+            logger.warning("Qdrant 向量入库失败（SQLite 仍已写入）: %s", e)
             pass
 
         return memory_item.id
@@ -249,7 +254,8 @@ class EpisodicMemory(BaseMemory):
                     limit=max(limit * 5, 20),
                     where=where,
                 )
-            except Exception:
+            except Exception as e:
+                logger.warning("Qdrant 向量检索失败，将回退到关键词匹配: %s", e)
                 hits = []
 
         # 过滤与重排
@@ -391,8 +397,8 @@ class EpisodicMemory(BaseMemory):
                     metadata=[payload],
                     ids=[memory_id]
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Qdrant 重嵌入失败（update 已写入 SQLite）: %s", e)
 
         return updated or doc_updated
     
@@ -417,8 +423,8 @@ class EpisodicMemory(BaseMemory):
         if self.vector_store is not None:
             try:
                 self.vector_store.delete_memories([memory_id])
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Qdrant 删除向量失败（SQLite 已删除）: %s", e)
         
         return removed or doc_deleted
     
@@ -443,8 +449,8 @@ class EpisodicMemory(BaseMemory):
         try:
             if ids:
                 self.vector_store.delete_memories(ids)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Qdrant 批量删除向量失败（SQLite 已清空）: %s", e)
 
     def forget(self, strategy: str = "importance_based", threshold: float = 0.1, max_age_days: int = 30) -> int:
         """情景记忆遗忘机制（硬删除）"""
@@ -508,7 +514,8 @@ class EpisodicMemory(BaseMemory):
         db_stats = self.doc_store.get_database_stats()
         try:
             vs_stats = self.vector_store.get_collection_stats()
-        except Exception:
+        except Exception as e:
+            logger.warning("Qdrant 集合统计读取失败: %s", e)
             vs_stats = {"store_type": "qdrant"}
         return {
             "count": len(active_episodes),  # 活跃记忆数量

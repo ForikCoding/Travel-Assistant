@@ -595,7 +595,12 @@ class PerceptualMemory(BaseMemory):
             inputs = self._clip_processor(images=image, return_tensors="pt")
             with self._no_grad():
                 feats = self._clip_model.get_image_features(**inputs)
-            vec = feats[0].detach().cpu().numpy().tolist()
+            # feats 是 BaseModelOutputWithPooling：
+            #   feats[0]           = last_hidden_state (B, 50, 768)  patch tokens
+            #   feats.pooler_output = 投影后的图像特征 (B, projection_dim)
+            # 取 pooler_output 的第一个样本即为单张图的 embedding。
+            embeds = feats.pooler_output[0]
+            vec = embeds.detach().cpu().numpy().tolist()
             return vec
         except Exception:
             return self._image_encoder_hash(image_data)
@@ -641,7 +646,9 @@ class PerceptualMemory(BaseMemory):
             inputs = self._clap_processor(audios=speech, sampling_rate=48000, return_tensors="pt")
             with self._no_grad():
                 feats = self._clap_model.get_audio_features(**inputs)
-            vec = feats[0].detach().cpu().numpy().tolist()
+            # CLAP 返回的 BaseModelOutputWithPooling 中 pooler_output 已是投影后的 audio embedding。
+            embeds = feats.pooler_output[0]
+            vec = embeds.detach().cpu().numpy().tolist()
             return vec
         except Exception:
             return self._audio_encoder_hash(audio_data)

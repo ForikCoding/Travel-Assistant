@@ -8,7 +8,10 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 from datetime import datetime
+import os
 from pydantic import BaseModel
+
+# .env 已在包入口 agent_runtime/__init__.py 中加载（保证早于所有子模块生效）
 
 class MemoryItem(BaseModel):
     """记忆项结构"""
@@ -30,6 +33,9 @@ class MemoryConfig(BaseModel):
     storage_path: str = "./memory_data"
 
     # 向量/嵌入相关（可选关闭，适用于只用 SQLite 的轻量 episodic）
+    # 默认禁用向量存储与嵌入模型：让 agent_runtime 默认就「纯 SQLite 离线」可用，
+    # 不依赖 Qdrant / HuggingFace / DashScope 等任何外部服务。
+    # 需要启用时再显式置 False（生产环境启用向量检索能力）。
     disable_vector_store: bool = False
     disable_embeddings: bool = False
     
@@ -45,6 +51,51 @@ class MemoryConfig(BaseModel):
 
     # 感知记忆特定配置
     perceptual_memory_modalities: List[str] = ["text", "image", "audio", "video"]
+
+    @classmethod
+    def from_env(cls) -> "MemoryConfig":
+        """从环境变量构建配置（MEMORY_* 前缀）。
+
+        未设置（或为空字符串）的环境变量回退到字段默认值。
+        参考 .env.example 中的「记忆系统配置」一节。
+        """
+        fields = cls.model_fields
+
+        def _str(env_name: str, field: str) -> str:
+            return os.getenv(env_name) or fields[field].default
+
+        def _int(env_name: str, field: str) -> int:
+            raw = os.getenv(env_name)
+            return int(raw) if raw not in (None, "") else fields[field].default
+
+        def _float(env_name: str, field: str) -> float:
+            raw = os.getenv(env_name)
+            return float(raw) if raw not in (None, "") else fields[field].default
+
+        def _bool(env_name: str, field: str) -> bool:
+            raw = os.getenv(env_name)
+            if raw in (None, ""):
+                return fields[field].default
+            return raw.strip().lower() in ("1", "true", "yes", "on")
+
+        modalities_raw = os.getenv("MEMORY_PERCEPTUAL_MODALITIES")
+        if modalities_raw is None:
+            modalities = list(fields["perceptual_memory_modalities"].default)
+        else:
+            modalities = [m.strip() for m in modalities_raw.split(",") if m.strip()]
+
+        return cls(
+            storage_path=_str("MEMORY_STORAGE_PATH", "storage_path"),
+            disable_vector_store=_bool("MEMORY_DISABLE_VECTOR_STORE", "disable_vector_store"),
+            disable_embeddings=_bool("MEMORY_DISABLE_EMBEDDINGS", "disable_embeddings"),
+            max_capacity=_int("MEMORY_MAX_CAPACITY", "max_capacity"),
+            importance_threshold=_float("MEMORY_IMPORTANCE_THRESHOLD", "importance_threshold"),
+            decay_factor=_float("MEMORY_DECAY_FACTOR", "decay_factor"),
+            working_memory_capacity=_int("MEMORY_WORKING_CAPACITY", "working_memory_capacity"),
+            working_memory_tokens=_int("MEMORY_WORKING_TOKENS", "working_memory_tokens"),
+            working_memory_ttl_minutes=_int("MEMORY_WORKING_TTL_MINUTES", "working_memory_ttl_minutes"),
+            perceptual_memory_modalities=modalities,
+        )
 
 
 class BaseMemory(ABC):

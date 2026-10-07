@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-runtime"
+version = "0.1.0"
+description = "独立可复用的智能体运行时框架：记忆、工具、协议、Agent"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Travel-Assistant Contributors" }]
+
+# 运行时依赖
+dependencies = [
+    "pydantic>=2.0.0",
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+    "tiktoken>=0.5.0",
+    "numpy>=1.20.0",
+    # qdrant-client 是 EpisodicMemory / PerceptualMemory 向量检索的硬依赖
+    # ——代码里有 `from qdrant_client import ...` 的顶层 import；
+    # 如果只想用纯 SQLite 模式，仍需装它才能 import memory.types.episodic，
+    # 除非设置 MEMORY_DISABLE_EMBEDDINGS=true / MEMORY_DISABLE_VECTOR_STORE=true
+    # 走离线路径（详见 README）。
+    "qdrant-client>=1.6.0",
+]
+
+[project.optional-dependencies]
+# 完整功能（含 Web UI 与 MCP 协议）
+full = [
+    "gradio>=5.0.0",
+    "fastmcp>=2.0.0",
+]
+# 知识图谱与 NLP 增强（SemanticMemory 用）
+graph = [
+    "neo4j>=5.0.0",
+    "spacy>=3.0.0",
+]
+# 感知记忆多模态（PerceptualMemory 加载 CLIP/CLAP 用）
+# 不装也能用纯文本模态；装了才能用 image / audio 模态的真实向量编码
+# 体积较大（CLIP ~600MB、CLAP ~1.5GB），按需启用
+perceptual = [
+    "transformers>=4.45.0",
+    "Pillow>=10.0.0",
+    "librosa>=0.10.0",
+]
+# 开发依赖
+dev = [
+    "pytest>=7.0.0",
+]
+
+[tool.setuptools]
+package-dir = { "" = "." }
+
+[tool.setuptools.packages.find]
+include = ["agent_runtime*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = "-ra --tb=short --showlocals"

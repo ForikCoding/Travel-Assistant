@@ -21,7 +21,7 @@ load_dotenv()
 try:
     from .exceptions import AgentsException
 except ImportError:
-    from app.agent_runtime.core.exceptions import AgentsException
+    from agent_runtime.core.exceptions import AgentsException
 
 # 支持的LLM提供商
 SUPPORTED_PROVIDERS = Literal[

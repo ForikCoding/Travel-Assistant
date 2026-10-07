@@ -151,6 +151,9 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# agent_runtime 记忆系统本地数据（SQLite 等）
+agent_runtime/memory_data/
+
 # Environments
 .env
 .envrc

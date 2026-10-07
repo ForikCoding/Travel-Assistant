@@ -10,3 +10,10 @@ google-search-results>=2.4.0
 markitdown==0.0.2
 gradio>=5.0.0
 tiktoken>=0.5.0
+
+# 智能体运行时（独立子包，位于 ../agent_runtime/）
+# 安装命令: pip install -e ../agent_runtime[full]
+-e ../agent_runtime
+
+# 测试
+pytest>=7.0.0

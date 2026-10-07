@@ -1,0 +1,28 @@
+# agent_runtime 运行时依赖
+# 安装：pip install -r requirements.txt
+# 完整安装（含 Neo4j + spacy）：pip install -r requirements.txt -r requirements-graph.txt
+
+# ===== 核心依赖（缺一不可）=====
+pydantic>=2.0.0
+openai>=1.0.0
+python-dotenv>=1.0.0
+tiktoken>=0.5.0
+numpy>=1.20.0
+
+# 向量数据库客户端（EpisodicMemory / PerceptualMemory 的 Qdrant 后端）
+# 离线纯 SQLite 模式仍需安装此包（模块顶层 import），但运行时不连服务
+qdrant-client>=1.6.0
+
+# ===== 可选：Web UI / 协议 =====
+gradio>=5.0.0
+fastmcp>=2.0.0
+
+# ===== 可选：感知记忆多模态依赖（PerceptualMemory 加载 CLIP/CLAP 用）=====
+# 不装也能用纯文本模态；装了才能用 image / audio 模态的真实向量编码。
+# 体积较大（CLIP ~600MB、CLAP ~1.5GB），按需启用。
+transformers>=4.45.0
+Pillow>=10.0.0
+librosa>=0.10.0
+
+# ===== 可选：HelloAgents 框架 =====
+# hello-agents

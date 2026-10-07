@@ -8,7 +8,8 @@ from typing import Dict, Any, List
 from datetime import datetime
 
 from ..base import Tool, ToolParameter
-from memory import MemoryManager, MemoryConfig
+from ...memory.base import MemoryConfig
+from ...memory.manager import MemoryManager
 
 class MemoryTool(Tool):
     """记忆工具
@@ -32,7 +33,7 @@ class MemoryTool(Tool):
         )
 
         # 初始化记忆管理器
-        self.memory_config = memory_config or MemoryConfig()
+        self.memory_config = memory_config or MemoryConfig.from_env()
         self.memory_types = memory_types or ["working", "episodic", "semantic"]
 
         self.memory_manager = MemoryManager(

@@ -29,7 +29,7 @@ class MemoryManager:
         enable_semantic: bool = True,
         enable_perceptual: bool = False
     ):
-        self.config = config or MemoryConfig()
+        self.config = config or MemoryConfig.from_env()
         self.user_id = user_id
         
         # 存储和检索功能已移至各记忆类型内部实现

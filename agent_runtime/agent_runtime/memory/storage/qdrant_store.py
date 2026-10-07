@@ -5,6 +5,7 @@ Qdrant向量数据库存储实现
 
 import logging
 import os
+import sys
 import uuid
 import threading
 from typing import Dict, List, Optional, Any, Union
@@ -15,14 +16,41 @@ try:
     from qdrant_client import QdrantClient
     from qdrant_client.http import models
     from qdrant_client.http.models import (
-        Distance, VectorParams, PointStruct, 
-        Filter, FieldCondition, MatchValue, SearchRequest
+        Distance, VectorParams, PointStruct,
+        Filter, FieldCondition, MatchValue
     )
     QDRANT_AVAILABLE = True
-except ImportError:
+except ImportError as _import_error:
     QDRANT_AVAILABLE = False
     QdrantClient = None
     models = None
+    _IMPORT_ERROR = _import_error   # 保存真实异常，供报错时显示
+else:
+    _IMPORT_ERROR = None
+
+
+def _install_hint() -> str:
+    """生成「qdrant-client 未安装」的安装提示。
+
+    显示当前 Python 解释器路径与包在 PyPI 上的真实最新版本（拿不到时回退到 1.6.0），
+    避免错误信息里给出过期版本号。
+    """
+    try:
+        import urllib.request
+        import json as _json
+        with urllib.request.urlopen(
+            "https://pypi.org/pypi/qdrant-client/json", timeout=3
+        ) as resp:
+            latest = _json.loads(resp.read())["info"]["version"]
+    except Exception:
+        latest = "1.6.0"  # 文档里写的最低已验证版本
+
+    py = sys.executable.replace("\\", "/")
+    return (
+        f"qdrant-client 未安装（_IMPORT_ERROR={_IMPORT_ERROR!r}）。\n"
+        f"  安装命令: {py} -m pip install qdrant-client>={latest}\n"
+        f"  或者安装 agent_runtime 的存储可选依赖: pip install agent-runtime[storage]"
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +120,7 @@ class QdrantVectorStore:
             timeout: 连接超时时间
         """
         if not QDRANT_AVAILABLE:
-            raise ImportError(
-                "qdrant-client未安装。请运行: pip install qdrant-client>=1.6.0"
-            )
+            raise ImportError(_install_hint())
         
         self.url = url
         self.api_key = api_key

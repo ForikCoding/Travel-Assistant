@@ -37,7 +37,17 @@ class WorkingMemory(BaseMemory):
         self.memories: List[MemoryItem] = []
         
         # 使用优先级队列管理记忆
-        self.memory_heap = []  # (priority, timestamp, memory_item)
+        self.memory_heap = []  # (priority, timestamp, seq, memory_item)
+        self._heap_seq = 0     # 单调递增序号，作为堆排序的最终 tie-breaker，
+                               # 避免 heapq 在优先级/时间戳都相同时比较 MemoryItem（其不可比较）
+
+    def _heap_push(self, priority: float, memory_item: MemoryItem):
+        """入堆：用自增序号兜底，保证任何情况下都不会比较 MemoryItem 本身。"""
+        self._heap_seq += 1
+        heapq.heappush(
+            self.memory_heap,
+            (-priority, memory_item.timestamp, self._heap_seq, memory_item),
+        )
 
     def add(self, memory_item: MemoryItem) -> str:
         """添加工作记忆"""
@@ -45,17 +55,17 @@ class WorkingMemory(BaseMemory):
         self._expire_old_memories()
         # 计算优先级（重要性 + 时间衰减）
         priority = self._calculate_priority(memory_item)
-        
+
         # 添加到堆中
-        heapq.heappush(self.memory_heap, (-priority, memory_item.timestamp, memory_item))
+        self._heap_push(priority, memory_item)
         self.memories.append(memory_item)
-        
+
         # 更新token计数
         self.current_tokens += len(memory_item.content.split())
-        
+
         # 检查容量限制
         self._enforce_capacity_limits()
-        
+
         return memory_item.id
 
     def retrieve(self, query: str, limit: int = 5, user_id: str = None, **kwargs) -> List[MemoryItem]:
@@ -374,9 +384,8 @@ class WorkingMemory(BaseMemory):
         # 重建堆
         self.memory_heap = []
         for mem in self.memories:
-            priority = self._calculate_priority(mem)
-            heapq.heappush(self.memory_heap, (-priority, mem.timestamp, mem))
-    
+            self._heap_push(self._calculate_priority(mem), mem)
+
     def _remove_lowest_priority_memory(self):
         """删除优先级最低的记忆"""
         if not self.memories:
@@ -400,8 +409,7 @@ class WorkingMemory(BaseMemory):
         # 简单实现：重建堆
         self.memory_heap = []
         for mem in self.memories:
-            priority = self._calculate_priority(mem)
-            heapq.heappush(self.memory_heap, (-priority, mem.timestamp, mem))
+            self._heap_push(self._calculate_priority(mem), mem)
     
     def _mark_deleted_in_heap(self, memory_id: str):
         """在堆中标记删除的记忆"""
